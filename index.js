@@ -11,30 +11,36 @@ function Driver(opts,app) {
   this._app = app;
 
   app.on('client::up',function(){
-    this._commands.forEach(this.createCommandDevice.bind(this));
+    for (var id in this._commands) {
+      this.createCommandDevice(id, this._commands[id]);
+    }
   }.bind(this));
 
 }
 
-Driver.prototype.createCommandDevice = function(cmd) {
-  var d = new Device(this._app, cmd.name, cmd.command, cmd.regex);
+Driver.prototype.createCommandDevice = function(id, cmd) {
+  var d = new Device(this._app, id, cmd.name, cmd.command, cmd.regex);
   this.emit('register', d);
 };
 
-Driver.prototype.addCommand = function(name, command, regex) {
+Driver.prototype.addCommand = function(id, name, command, regex) {
+
   var cmd = {
     name: name,
     command: command,
     regex: regex
   };
-  this._commands.push(cmd);
+
+  this._commands[id] = cmd;
   this.save();
 
-  this.createCommandDevice(cmd);
+  this.createCommandDevice(id, cmd);
 };
 
 
 Driver.prototype.config = function(rpc,cb) {
+
+  console.log('RPC CONFIG', rpc);
 
   var self = this;
 
@@ -50,6 +56,7 @@ Driver.prototype.config = function(rpc,cb) {
         "contents":[
           { "type": "paragraph", "text":"Please enter a command, and an optional regex to run on the stdout"},
           { "type": "input_field_text", "field_name": "name", "value": "", "label": "Name", "placeholder": "Uptime in days", "required": true},
+          { "type": "paragraph", "text":"Note : The name is also used as the device id."},
           { "type": "input_field_text", "field_name": "command", "value": "", "label": "Command", "placeholder": "uptime", "required": true},
           { "type": "input_field_text", "field_name": "regex", "value": "", "label": "RegEx (JS string)", "placeholder": "up (\\\\d+) days", "required": false},
           { "type": "paragraph", "text":"Note : If you provide a regex, the result of the first capturing group will be returned, or if there are no capturing groups the whole match string. "},
@@ -63,10 +70,14 @@ Driver.prototype.config = function(rpc,cb) {
           new RegExp(rpc.params.regex);
         }
 
-        self.addCommand(rpc.params.name, rpc.params.command, rpc.params.regex || null);
+        var id = rpc.params.name.replace(/[^a-zA-Z0-9]/g, '');
+
+        var existing = !!this._commands[id];
+
+        self.addCommand(id, rpc.params.name, rpc.params.command, rpc.params.regex || null);
         cb(null, {
           "contents": [
-            { "type":"paragraph", "text":"Command added."},
+            { "type":"paragraph", "text":"Command added." + (existing?" Existing command with id '" + id + "' replaced.":'')},
             { "type":"close", "text":"Close"}
           ]
         });
@@ -84,7 +95,7 @@ Driver.prototype.config = function(rpc,cb) {
 };
 
 
-function Device(app, name, command, regex) {
+function Device(app, id, name, command, regex) {
   var self = this;
 
   this._app = app;
@@ -96,8 +107,8 @@ function Device(app, name, command, regex) {
   this.writeable = true;
   this.readable = true;
   this.V = 0;
-  this.D = 14;
-  this.G = 'shell' + (command+regex+name).replace(/[^a-zA-Z0-9]/g, '');
+  this.D = 330;
+  this.G = 'shell' + id;
   this.name = 'Shell : ' + name;
 }
 

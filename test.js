@@ -1,11 +1,12 @@
 
 var opts = {
-    commands: [
-    {
-        name: 'Uptime for great victory',
-        command: 'uptime',
-        regex: 'up (\\d+) days'
-    }]
+    commands: {
+        uptime: {
+            name: 'uptime',
+            command: 'sysctl kern.boottime',
+            regex: 'sec = (\\d+),'
+        }
+    }
 };
 
 var d = new (require('./index'))(opts, {
@@ -26,9 +27,21 @@ var d = new (require('./index'))(opts, {
     token: 'XXX'
 });
 
+
 d.save = function() {
     console.log('Driver.save', opts);
 };
+d.config({
+    method: 'addSubmit',
+    params: {
+        name: 'uptime',
+        command: 'sysctl kern.boottime',
+        regex: 'sec = (\\d+),'
+    }
+}, function(e, val) {
+    console.log('Ran config', e, val);
+});
+
 
 d.on('register', function(value) {
     console.log('Driver.register');
