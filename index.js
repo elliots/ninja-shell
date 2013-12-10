@@ -7,7 +7,7 @@ util.inherits(Device,stream);
 
 function Driver(opts,app) {
 
-  this._commands = (opts.commands = opts.commands || []);
+  this._commands = (opts.commands = opts.commands || {});
   this._app = app;
 
   app.on('client::up',function(){
